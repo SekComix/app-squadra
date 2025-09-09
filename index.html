@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Report Interventi</title>
+   
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#007bff">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+   
+            <style>
+        :root {
+            /* === MODIFICA COLORI: Da Blu a Verde Squadra === */
+            --primary-color: #28a745; /* Verde Successo */
+            --secondary-color: #6c757d;
+            --success-color: #198754; /* Verde più scuro per coerenza */
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --light-gray: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--light-gray); margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        .logo-container img { width: 80px; height: auto; border-radius: 15px; }
+        .logo-container h1 { color: var(--primary-color); margin: 5px 0 20px 0; font-size: 1.5em; }
+        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h2, h4, .section-title { color: var(--primary-color); }
+        h4, .section-title { border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 20px;}
+        .section-title { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input, textarea, select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; font-size: 16px; transition: border-color 0.3s; background-color: #fff; }
+        textarea { border: 2px solid #ced4da; }
+        input.error, textarea.error, select.error { border: 2px solid var(--danger-color); background-color: #fff0f0; }
+        .time-section, .bolla-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: center; }
+        .time-input-wrapper { position: relative; display: flex; align-items: center; }
+        .clear-time-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background-color: #e9ecef; color: #495057; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 16px; font-weight: bold; cursor: pointer; display: none; line-height: 24px; text-align: center; }
+        .time-input-wrapper input:not(:placeholder-shown) + .clear-time-btn { display: inline-block; }
+        .subtotal { text-align: right; font-weight: bold; font-size: 1.1em; grid-column: 1 / -1; }
+        #total-hours { font-size: 1.5em; font-weight: bold; color: var(--success-color); text-align: center; margin: 20px 0; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s, transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-success { background-color: var(--success-color); color: white; }
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        .btn-secondary { background-color: var(--secondary-color); color: white; }
+        .btn-info { background-color: var(--info-color); color: white; }
+        .action-buttons-container { display: flex; gap: 10px; }
+        #materials-container .material-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .material-qty { flex: 1.5; } .material-unit { flex: 2; font-size: 14px; } .material-desc { flex: 4; }
+        .remove-material-btn { flex-shrink: 0; width: 40px; height: 40px; padding: 0; font-size: 20px; }
+        #add-material-btn { width: auto; padding: 10px 15px; font-size: 14px; margin-top: 10px; }
+        .summary-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+        #summary-total { font-size: 1.2em; font-weight: bold; color: var(--success-color); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        #interventions-list .intervention-item { padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; animation: fadeIn 0.5s ease-out; cursor: pointer; }
+        .intervention-item .summary-view { display: flex; justify-content: space-between; align-items: center; }
+        .intervention-item .info { flex-grow: 1; }
+        .intervention-item .info span { display: block; margin-bottom: 5px; word-break: break-word; }
+        .intervention-item .info .client { font-weight: bold; font-size: 1.1em; }
+        .intervention-item .info .details { font-size: 0.9em; color: #6c757d; }
+        .intervention-item .info .details b { color: #495057; }
+        .intervention-item .expand-icon { transition: transform 0.3s; font-size: 1.5em; color: var(--secondary-color); }
+        .intervention-item.expanded .expand-icon { transform: rotate(180deg); }
+        .intervention-item .full-details { display: none; margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px; }
+        .intervention-item .full-details p { margin: 0 0 10px 0; white-space: pre-wrap; word-break: break-word; }
+        .intervention-item.expanded .full-details { display: block; }
+        .intervention-item.expanded .details { display: none; }
+        .intervention-item .actions { display: flex; flex-direction: column; align-items: flex-end; padding-left: 10px; }
+        .intervention-item .actions button { width: auto; padding: 8px 12px; font-size: 14px; margin-bottom: 5px; }
+        #photo-previews { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .photo-preview { position: relative; }
+        .photo-preview img { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; }
+        .remove-photo-btn { position: absolute; top: -5px; right: -5px; background: var(--danger-color); color: white; border-radius: 50%; width: 22px; height: 22px; border: none; font-weight: bold; cursor: pointer; line-height: 22px; text-align: center; }
+        .photo-btn-label { display: inline-flex; align-items: center; gap: 8px; padding: 10px 15px; background-color: var(--secondary-color); color: white; border-radius: 8px; cursor: pointer; }
+        #photo-input-camera, #photo-input-gallery { display: none; }
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translate(-50%, 150%); padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); color: white; z-index: 1000; transition: transform 0.4s ease-in-out; font-weight: bold; text-align: center;}
+        #toast.show { transform: translate(-50%, 0); }
+        #toast.success { background-color: var(--success-color); } #toast.error { background-color: var(--danger-color); } #toast.info { background-color: var(--info-color); }
+        #install-button { display: none; position: fixed; bottom: 20px; right: 20px; background-color: var(--primary-color); color: white; border-radius: 50px; padding: 15px 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); font-weight: bold; z-index: 999; width: auto; border: 2px solid white; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1001; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 90%; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin-top: 0; } .modal-content p { margin-bottom: 20px; line-height: 1.5; }
+        
+        /* NUOVI STILI PER LA SEZIONE SQUADRA */
+        .team-member-card {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            animation: fadeIn 0.5s;
+        }
+        .team-member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .team-member-header .form-group {
+            flex-grow: 1;
+            margin-bottom: 0;
+        }
+        .remove-member-btn {
+            width: 40px !important;
+            height: 40px;
+            padding: 0 !important;
+            font-size: 20px !important;
+            margin-left: 10px;
+        }
+        .time-override-toggle {
+            font-size: 14px;
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+        .time-override-toggle button {
+            all: unset; /* Resetta lo stile del bottone */
+            cursor: pointer;
+            color: var(--primary-color);
+            text-decoration: underline;
+            font-weight: bold;
+        }
+        .hidden-times {
+            display: none;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo-container">
+        <img src="icon.svg" alt="Logo AM Impianti Elettrici">
+        <h1>AM Impianti Elettrici di Maselli Andrea</h1>
+    </div>
+   <div class="card" id="form-card">
+    <!-- MODIFICA: Titolo dell'App -->
+    <h2 id="form-title">Nuovo Intervento Squadra</h2> 
+    <input type="hidden" id="intervention-id">
+    
+    <!-- MODIFICA: Campi Cliente e Data spostati sopra per chiarezza -->
+    <div class="form-group"><label for="date">Data</label><input type="date" id="date"></div>
+    <div class="form-group"><label for="client">Cliente</label><input type="text" id="client" placeholder="Nome del cliente"></div>
+    <div class="form-group"><label for="address">Indirizzo</label><input type="text" id="address" placeholder="Indirizzo dell'intervento"></div>
+
+    <!-- NUOVA SEZIONE SQUADRA -->
+    <h4 class="section-title">Membri Squadra e Orari</h4>
+    <div id="team-members-container">
+        <!-- Qui verranno aggiunti dinamicamente i membri della squadra -->
+    </div>
+    <button id="add-member-btn" class="btn-secondary" style="width: auto; padding: 10px 15px; font-size: 14px; margin-top: 10px;">+ Aggiungi Membro</button>
+    <!-- FINE NUOVA SEZIONE -->
+        <div class="form-group"><label for="address">Indirizzo</label><input type="text" id="address" placeholder="Indirizzo dell'intervento"></div>
+        <h4>Mattino</h4>
+        <div class="time-section">
+            <div><label for="start-am">Ora Inizio</label><div class="time-input-wrapper"><input type="time" id="start-am" placeholder=" "><button class="clear-time-btn" data-target="start-am">&times;</button></div></div>
+            <div><label for="end-am">Ora Fine</label><div class="time-input-wrapper"><input type="time" id="end-am" placeholder=" "><button class="clear-time-btn" data-target="end-am">&times;</button></div></div>
+            <div class="subtotal">Subtotale: <span id="subtotal-am">0h 0min</span></div>
+        </div>
+        <h4>Pomeriggio</h4>
+        <div class="time-section">
+            <div><label for="start-pm">Ora Inizio</label><div class="time-input-wrapper"><input type="time" id="start-pm" placeholder=" "><button class="clear-time-btn" data-target="start-pm">&times;</button></div></div>
+            <div><label for="end-pm">Ora Fine</label><div class="time-input-wrapper"><input type="time" id="end-pm" placeholder=" "><button class="clear-time-btn" data-target="end-pm">&times;</button></div></div>
+            <div class="subtotal">Subtotale: <span id="subtotal-pm">0h 0min</span></div>
+        </div>
+        <div id="total-hours">Totale Ore: 0h 0min</div>
+        <div class="form-group"><label for="work-done" class="section-title">Lavoro Svolto</label><textarea id="work-done" rows="4"></textarea></div>
+        <div class="form-group">
+            <h4 class="section-title">Materiali Utilizzati</h4>
+            <div id="materials-container"></div>
+            <button id="add-material-btn" class="btn-secondary">+</button>
+        </div>
+        <h4 class="section-title">Riferimenti Bolla (Opzionale)</h4>
+        <div class="bolla-section">
+             <div class="form-group"><label for="bolla-ref">Rif. Bolla</label><input type="text" id="bolla-ref" placeholder="Numero o riferimento"></div>
+             <div class="form-group"><label for="bolla-date">Data Bolla</label><input type="date" id="bolla-date"></div>
+        </div>
+        <div class="form-group">
+            <h4 class="section-title">Foto Lavori (Opzionale)</h4>
+            <div class="action-buttons-container">
+                <input type="file" id="photo-input-camera" accept="image/*" capture="environment">
+                <label for="photo-input-camera" class="photo-btn-label">📷 Scatta Foto</label>
+                <input type="file" id="photo-input-gallery" accept="image/*" multiple>
+                <label for="photo-input-gallery" class="photo-btn-label">🖼️ Scegli da Galleria</label>
+            </div>
+            <div id="photo-previews"></div>
+        </div>
+        <div class="form-group"><label for="notes" class="section-title">Note</label><textarea id="notes" rows="2"></textarea></div>
+        <button id="add-intervention-btn" class="btn-primary">Aggiungi Rapporto</button>
+    </div>
+    <div class="card" id="summary-card">
+        <div class="summary-header">
+            <h2 id="summary-title">Riepilogo Interventi</h2>
+            <div id="summary-total">Totale: 0h 0min</div>
+            <button id="clear-all-btn" class="btn-danger" style="width: auto; padding: 8px 12px; font-size: 14px;">Svuota Tutto</button>
+        </div>
+        <div id="interventions-list" style="margin-top: 15px;"></div>
+        <div class="form-group action-buttons-container" style="margin-top: 20px;">
+            <button id="save-report-btn" class="btn-info">Salva Report</button>
+            <button id="send-report-btn" class="btn-success">Invia Report Ufficio</button>
+        </div>
+    </div>
+</div>
+<div id="toast"></div>
+<button id="install-button">Installa App</button>
+<div class="modal-overlay" id="install-instructions-modal">
+    <div class="modal-content">
+        <h3>Come installare questa App</h3>
+        <p><strong>Su Android (Chrome):</strong><br>1. Tocca i tre puntini (⋮) in alto a destra.<br>2. Seleziona "Installa app".</p>
+        <p><strong>Su iPhone (Safari):</strong><br>1. Tocca l'icona di condivisione ( quadrato con freccia in su ).<br>2. Scorri e seleziona "Aggiungi a schermata Home".</p>
+        <button id="close-modal-btn" class="btn-primary">OK, ho capito</button>
+    </div>
+</div>
+<div class="modal-overlay" id="save-modal">
+    <div class="modal-content">
+        <h3>Salva Report</h3>
+        <p>Scegli quale file scaricare sul tuo dispositivo.</p>
+        <div class="action-buttons-container" style="flex-direction: column; gap: 10px;">
+            <button id="modal-save-pdf" class="btn-info">Scarica PDF</button>
+            <button id="modal-save-excel" class="btn-success">Scarica Excel</button>
+        </div>
+        <button id="modal-close-save" class="btn-secondary" style="margin-top: 20px;">Annulla</button>
+    </div>
+</div>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registrato:', reg.scope)).catch(err => console.log('SW non registrato:', err));
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+    // Riferimenti agli elementi HTML
+    const allInputs = {
+        date: document.getElementById('date'),
+        client: document.getElementById('client'),
+        address: document.getElementById('address'),
+        workDone: document.getElementById('work-done'),
+        notes: document.getElementById('notes'),
+        bollaRef: document.getElementById('bolla-ref'),
+        bollaDate: document.getElementById('bolla-date')
+    };
+    const teamContainer = document.getElementById('team-members-container');
+    const addMemberBtn = document.getElementById('add-member-btn');
+    const materialsContainer = document.getElementById('materials-container');
+    const addMaterialBtn = document.getElementById('add-material-btn');
+    const photoInputCamera = document.getElementById('photo-input-camera');
+    const photoInputGallery = document.getElementById('photo-input-gallery');
+    const photoPreviews = document.getElementById('photo-previews');
+    const addBtn = document.getElementById('add-intervention-btn');
+    const interventionsList = document.getElementById('interventions-list');
+    const saveReportBtn = document.getElementById('save-report-btn');
+    const sendReportBtn = document.getElementById('send-report-btn');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const formTitle = document.getElementById('form-title');
+    const interventionIdInput = document.getElementById('intervention-id');
+    const toast = document.getElementById('toast');
+    const totalHoursSpan = document.getElementById('total-hours');
+    const summaryTotalSpan = document.getElementById('summary-total');
+
+    // Variabili di stato
+    let dailyInterventions = [];
+    let currentPhotos = [];
+    const unitsOfMeasure = ["", "PZ", "NR", "MT", "MQ", "KG", "LT", "SC", "CONF", "ORE", "Altro..."];
+   
+    // Variabili per i modali e i file
+    const saveModal = document.getElementById('save-modal');
+    const modalSavePdfBtn = document.getElementById('modal-save-pdf');
+    const modalSaveExcelBtn = document.getElementById('modal-save-excel');
+    const modalCloseSaveBtn = document.getElementById('modal-close-save');
+    let generatedPdfBlob = null;
+    let generatedWb = null;
+    let generatedFileNameBase = '';
+    
+    // ==============================================================================
+    // FUNZIONI DI CALCOLO E FORMATTAZIONE ORARI
+    // ==============================================================================
+    const calculateMinutes = (start, end) => {
+        if (!start || !end) return 0;
+        let s = new Date(`1970-01-01T${start}:00`), e = new Date(`1970-01-01T${end}:00`);
+        if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+        if (e < s) e.setDate(e.getDate() + 1);
+        return (e - s) / 60000;
+    };
+
+    const formatMinutes = (m) => (m <= 0) ? '0h 0min' : `${Math.floor(m / 60)}h ${Math.round(m % 60)}min`;
+
+    // ==============================================================================
+    // GESTIONE SQUADRA (LOGICA PRINCIPALE NUOVA)
+    // ==============================================================================
+    const addMemberRow = (member = {}) => {
+        const memberId = member.id || `member-${Date.now()}`;
+        const isFirstMember = teamContainer.children.length === 0;
+
+        const memberCard = document.createElement('div');
+        memberCard.className = 'team-member-card';
+        memberCard.dataset.id = memberId;
+
+        memberCard.innerHTML = `
+            <div class="team-member-header">
+                <div class="form-group">
+                    <label for="name-${memberId}">${isFirstMember ? 'Caposquadra' : 'Membro Squadra'}</label>
+                    <input type="text" id="name-${memberId}" class="employee-name" placeholder="Nome Cognome" value="${member.name || ''}">
+                </div>
+                ${!isFirstMember ? '<button class="btn-danger remove-member-btn">-</button>' : ''}
+            </div>
+
+            <!-- Contenitore Orari che può essere nascosto/mostrato -->
+            <div class="member-times ${isFirstMember || member.timesOverridden ? '' : 'hidden-times'}">
+                <h4>Mattino</h4>
+                <div class="time-section">
+                    <div><label for="start-am-${memberId}">Ora Inizio</label><div class="time-input-wrapper"><input type="time" id="start-am-${memberId}" placeholder=" " value="${member.startAM || ''}"><button class="clear-time-btn" data-target="start-am-${memberId}">&times;</button></div></div>
+                    <div><label for="end-am-${memberId}">Ora Fine</label><div class="time-input-wrapper"><input type="time" id="end-am-${memberId}" placeholder=" " value="${member.endAM || ''}"><button class="clear-time-btn" data-target="end-am-${memberId}">&times;</button></div></div>
+                    <div class="subtotal">Subtotale: <span class="subtotal-am">0h 0min</span></div>
+                </div>
+                <h4>Pomeriggio</h4>
+                <div class="time-section">
+                    <div><label for="start-pm-${memberId}">Ora Inizio</label><div class="time-input-wrapper"><input type="time" id="start-pm-${memberId}" placeholder=" " value="${member.startPM || ''}"><button class="clear-time-btn" data-target="start-pm-${memberId}">&times;</button></div></div>
+                    <div><label for="end-pm-${memberId}">Ora Fine</label><div class="time-input-wrapper"><input type="time" id="end-pm-${memberId}" placeholder=" " value="${member.endPM || ''}"><button class="clear-time-btn" data-target="end-pm-${memberId}">&times;</button></div></div>
+                    <div class="subtotal">Subtotale: <span class="subtotal-pm">0h 0min</span></div>
+                </div>
+            </div>
+            
+            <!-- Bottone per mostrare/nascondere orari (solo per membri aggiuntivi) -->
+            ${!isFirstMember ? `
+                <div class="time-override-toggle">
+                    <button class="toggle-times-btn">${member.timesOverridden ? 'Usa orario caposquadra' : 'Modifica orario'}</button>
+                </div>
+            ` : ''}
+        `;
+        teamContainer.appendChild(memberCard);
+        updateAllTotals();
+    };
+
+    teamContainer.addEventListener('input', (e) => {
+        if (e.target.matches('input[type="time"], .employee-name')) {
+            // Se a cambiare sono gli orari del primo membro (caposquadra), aggiorna gli altri
+            const firstMemberCard = teamContainer.firstElementChild;
+            if (e.target.closest('.team-member-card') === firstMemberCard) {
+                updateDefaultTimes();
+            }
+            updateAllTotals();
+        }
+    });
+
+    teamContainer.addEventListener('click', (e) => {
+        // Rimuovi membro
+        if (e.target.classList.contains('remove-member-btn')) {
+            e.target.closest('.team-member-card').remove();
+            updateAllTotals();
+        }
+        // Mostra/Nascondi orari personalizzati
+        if (e.target.classList.contains('toggle-times-btn')) {
+            const memberCard = e.target.closest('.team-member-card');
+            const timesContainer = memberCard.querySelector('.member-times');
+            const isHidden = timesContainer.classList.toggle('hidden-times');
+            e.target.textContent = isHidden ? 'Modifica orario' : 'Usa orario caposquadra';
+            
+            if (!isHidden) { // Se ho appena mostrato gli orari, li pre-compilo
+                updateDefaultTimes();
+            }
+            updateAllTotals();
+        }
+        // Svuota campo orario
+        if (e.target.classList.contains('clear-time-btn')) {
+            document.getElementById(e.target.dataset.target).value = '';
+            updateAllTotals();
+        }
+    });
+
+    addMemberBtn.addEventListener('click', () => addMemberRow());
+
+    // Funzione che aggiorna gli orari dei membri "follower" con quelli del caposquadra
+    const updateDefaultTimes = () => {
+        const members = Array.from(teamContainer.children);
+        if (members.length < 2) return;
+
+        const firstMember = members[0];
+        const leaderTimes = {
+            startAM: firstMember.querySelector('[id^="start-am-"]').value,
+            endAM: firstMember.querySelector('[id^="end-am-"]').value,
+            startPM: firstMember.querySelector('[id^="start-pm-"]').value,
+            endPM: firstMember.querySelector('[id^="end-pm-"]').value,
+        };
+
+        members.slice(1).forEach(memberCard => {
+            const timesContainer = memberCard.querySelector('.member-times');
+            if (timesContainer.classList.contains('hidden-times')) {
+                // Se gli orari sono nascosti, non faccio nulla, erediteranno i valori al momento del calcolo
+            } else {
+                // Se sono visibili, li aggiorno
+                memberCard.querySelector('[id^="start-am-"]').value = leaderTimes.startAM;
+                memberCard.querySelector('[id^="end-am-"]').value = leaderTimes.endAM;
+                memberCard.querySelector('[id^="start-pm-"]').value = leaderTimes.startPM;
+                memberCard.querySelector('[id^="end-pm-"]').value = leaderTimes.endPM;
+            }
+        });
+    };
+    
+    // Funzione che calcola e aggiorna TUTTI i totali (per membro e globali)
+    const updateAllTotals = () => {
+        let totalMinutesIntervention = 0;
+        const members = Array.from(teamContainer.children);
+        if (members.length === 0) {
+            totalHoursSpan.textContent = `Totale Ore: 0h 0min`;
+            return;
+        }
+
+        const leaderTimes = {
+            startAM: members[0].querySelector('[id^="start-am-"]').value,
+            endAM: members[0].querySelector('[id^="end-am-"]').value,
+            startPM: members[0].querySelector('[id^="start-pm-"]').value,
+            endPM: members[0].querySelector('[id^="end-pm-"]').value,
+        };
+
+        members.forEach(memberCard => {
+            let memberStartAM, memberEndAM, memberStartPM, memberEndPM;
+            const timesContainer = memberCard.querySelector('.member-times');
+
+            if (timesContainer.classList.contains('hidden-times')) {
+                // Eredita orari dal caposquadra
+                ({ startAM: memberStartAM, endAM: memberEndAM, startPM: memberStartPM, endPM: memberEndPM } = leaderTimes);
+            } else {
+                // Usa i propri orari
+                memberStartAM = memberCard.querySelector('[id^="start-am-"]').value;
+                memberEndAM = memberCard.querySelector('[id^="end-am-"]').value;
+                memberStartPM = memberCard.querySelector('[id^="start-pm-"]').value;
+                memberEndPM = memberCard.querySelector('[id^="end-pm-"]').value;
+            }
+
+            const minutesAM = calculateMinutes(memberStartAM, memberEndAM);
+            const minutesPM = calculateMinutes(memberStartPM, memberEndPM);
+            
+            memberCard.querySelector('.subtotal-am').textContent = formatMinutes(minutesAM);
+            memberCard.querySelector('.subtotal-pm').textContent = formatMinutes(minutesPM);
+
+            totalMinutesIntervention += (minutesAM + minutesPM);
+        });
+
+        totalHoursSpan.textContent = `Totale Ore: ${formatMinutes(totalMinutesIntervention)}`;
+    };
+
+    // ==============================================================================
+    // GESTIONE MATERIALI, FOTO, TOAST (invariate)
+    // ==============================================================================
+    const addMaterialRow = (qty = '', unit = '', desc = '') => {
+        const row = document.createElement('div');
+        row.className = 'material-row';
+        const unitOptions = unitsOfMeasure.map(u => `<option value="${u}" ${u === unit ? 'selected' : ''}>${u || 'Seleziona...'}</option>`).join('');
+        row.innerHTML = `<input type="number" class="material-qty" placeholder="Qtà" value="${qty}"><select class="material-unit">${unitOptions}</select><input type="text" class="material-desc" placeholder="Descrizione articolo" value="${desc}"><button class="btn-danger remove-material-btn">-</button>`;
+        materialsContainer.appendChild(row);
+    };
+    addMaterialBtn.addEventListener('click', (e) => { e.preventDefault(); addMaterialRow(); });
+    materialsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-material-btn')) {
+            e.preventDefault();
+            if (materialsContainer.children.length > 1) { e.target.parentElement.remove(); }
+            else {
+                e.target.parentElement.querySelector('.material-qty').value = '';
+                e.target.parentElement.querySelector('.material-desc').value = '';
+                e.target.parentElement.querySelector('.material-unit').value = '';
+            }
+        }
+    });
+    const getMaterialsData = () => {
+        return Array.from(document.querySelectorAll('#materials-container .material-row')).map(row => ({
+            qty: row.querySelector('.material-qty').value,
+            unit: row.querySelector('.material-unit').value,
+            desc: row.querySelector('.material-desc').value.trim()
+        })).filter(m => m.qty && m.unit && m.desc);
+    };
+    const setMaterialsData = (materials = []) => {
+        materialsContainer.innerHTML = '';
+        if (materials.length === 0) { addMaterialRow(); }
+        else { materials.forEach(m => addMaterialRow(m.qty, m.unit, m.desc)); }
+    };
+
+    const handlePhotoFiles = (files) => {
+        if (!files || files.length === 0) return;
+        showToast('Caricamento e compressione foto...', 'info');
+        const MAX_WIDTH = 1024, QUALITY = 0.8;
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+                    if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
+                    else { if (height > MAX_WIDTH) { width *= MAX_WIDTH / height; height = MAX_WIDTH; } }
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+                    currentPhotos.push({ id: Date.now() + '-' + file.name, dataUrl: compressedDataUrl });
+                    renderPhotoPreviews();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+    photoInputCamera.addEventListener('change', (event) => { handlePhotoFiles(event.target.files); event.target.value = ''; });
+    photoInputGallery.addEventListener('change', (event) => { handlePhotoFiles(event.target.files); event.target.value = ''; });
+    const renderPhotoPreviews = () => {
+        photoPreviews.innerHTML = '';
+        currentPhotos.forEach(photo => {
+            const preview = document.createElement('div');
+            preview.className = 'photo-preview';
+            preview.innerHTML = `<img src="${photo.dataUrl}" alt="Anteprima"><button class="remove-photo-btn" data-id="${photo.id}">&times;</button>`;
+            photoPreviews.appendChild(preview);
+        });
+    };
+    photoPreviews.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-photo-btn')) {
+            const photoIdToRemove = e.target.dataset.id;
+            currentPhotos = currentPhotos.filter(p => p.id != photoIdToRemove);
+            renderPhotoPreviews();
+        }
+    });
+
+    const showToast = (message, type = 'success', duration = 3000) => {
+        toast.textContent = message;
+        toast.className = `show ${type}`;
+        setTimeout(() => { toast.className = ''; }, duration);
+    };
+
+    // ==============================================================================
+    // LOGICA PRINCIPALE (AGGIUNGI, MODIFICA, ELIMINA INTERVENTO)
+    // ==============================================================================
+    addBtn.addEventListener('click', () => {
+        // Validazione campi generali
+        let isValid = true;
+        [allInputs.client, allInputs.workDone, allInputs.address].forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('error');
+                isValid = false;
+            } else {
+                field.classList.remove('error');
+            }
+        });
+
+        // Validazione membri squadra
+        const memberCards = Array.from(teamContainer.children);
+        if (memberCards.length === 0) {
+            showToast('Aggiungi almeno un membro alla squadra.', 'error');
+            return;
+        }
+
+        memberCards.forEach(card => {
+            const nameInput = card.querySelector('.employee-name');
+            if (!nameInput.value.trim()) {
+                nameInput.classList.add('error');
+                isValid = false;
+            } else {
+                nameInput.classList.remove('error');
+            }
+        });
+
+        if (!isValid) {
+            showToast('Compila tutti i campi evidenziati.', 'error');
+            return;
+        }
+
+        // Recupero dati squadra
+        const leaderTimes = {
+            startAM: memberCards[0].querySelector('[id^="start-am-"]').value,
+            endAM: memberCards[0].querySelector('[id^="end-am-"]').value,
+            startPM: memberCards[0].querySelector('[id^="start-pm-"]').value,
+            endPM: memberCards[0].querySelector('[id^="end-pm-"]').value,
+        };
+        
+        const teamData = memberCards.map(card => {
+            const timesContainer = card.querySelector('.member-times');
+            const useOverride = !timesContainer.classList.contains('hidden-times');
+            
+            const memberTimes = useOverride ? {
+                startAM: card.querySelector('[id^="start-am-"]').value,
+                endAM: card.querySelector('[id^="end-am-"]').value,
+                startPM: card.querySelector('[id^="start-pm-"]').value,
+                endPM: card.querySelector('[id^="end-pm-"]').value,
+            } : leaderTimes;
+
+            const totalMinutes = calculateMinutes(memberTimes.startAM, memberTimes.endAM) + calculateMinutes(memberTimes.startPM, memberTimes.endPM);
+
+            return {
+                id: card.dataset.id,
+                name: card.querySelector('.employee-name').value,
+                ...memberTimes,
+                timesOverridden: useOverride,
+                totalMinutes: totalMinutes,
+                totalHours: formatMinutes(totalMinutes)
+            };
+        });
+
+        const totalInterventionMinutes = teamData.reduce((sum, member) => sum + member.totalMinutes, 0);
+        if (totalInterventionMinutes <= 0) {
+            showToast('Inserire almeno un intervallo di ore valido.', 'error');
+            return;
+        }
+
+        const intervention = {
+            id: interventionIdInput.value ? Number(interventionIdInput.value) : Date.now(),
+            date: allInputs.date.value,
+            client: allInputs.client.value,
+            address: allInputs.address.value,
+            workDone: allInputs.workDone.value,
+            materials: getMaterialsData(),
+            notes: allInputs.notes.value,
+            photos: currentPhotos.map(p => ({ id: p.id, dataUrl: p.dataUrl })),
+            bollaRef: allInputs.bollaRef.value,
+            bollaDate: allInputs.bollaDate.value,
+            team: teamData, // Salva i dati della squadra
+            totalMinutes: totalInterventionMinutes
+        };
+        
+        const existingIndex = dailyInterventions.findIndex(i => i.id == intervention.id);
+        if (existingIndex > -1) {
+            dailyInterventions[existingIndex] = intervention;
+            showToast('Intervento modificato!');
+        } else {
+            dailyInterventions.push(intervention);
+            showToast('Intervento aggiunto!');
+        }
+        renderInterventions();
+        resetForm();
+    });
+
+    const resetForm = () => {
+        Object.values(allInputs).forEach(input => input.value = '');
+        allInputs.date.value = new Date().toISOString().slice(0, 10);
+        interventionIdInput.value = '';
+        teamContainer.innerHTML = '';
+        addMemberRow(); // Aggiunge il caposquadra
+        setMaterialsData([]);
+        currentPhotos = [];
+        renderPhotoPreviews();
+        formTitle.textContent = 'Nuovo Intervento Squadra';
+        addBtn.textContent = 'Aggiungi Rapporto';
+        updateAllTotals();
+    };
+    
+    // ==============================================================================
+    // RENDER, LOAD, SAVE (Aggiornate per la squadra)
+    // ==============================================================================
+    const renderInterventions = () => {
+        interventionsList.innerHTML = '';
+        let totalMinutesSummary = 0;
+        dailyInterventions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        if (dailyInterventions.length === 0) {
+            interventionsList.innerHTML = '<p>Nessun intervento aggiunto.</p>';
+            clearAllBtn.style.display = 'none';
+        } else {
+            clearAllBtn.style.display = 'block';
+            dailyInterventions.forEach(interv => {
+                totalMinutesSummary += interv.totalMinutes;
+                const item = document.createElement('div');
+                item.className = 'intervention-item';
+                const formattedDate = new Date(interv.date + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const teamNames = interv.team.map(m => m.name).join(', ');
+                
+                // Crea il dettaglio HTML per ogni membro
+                const teamDetailsHtml = interv.team.map(member => {
+                    let timeString = '';
+                    if (member.startAM && member.endAM) timeString += `Mattino: ${member.startAM}-${member.endAM}`;
+                    if (member.startPM && member.endPM) timeString += `${timeString ? ' | ' : ''}Pomeriggio: ${member.startPM}-${member.endPM}`;
+                    return `<p style="margin: 2px 0;">- <b>${member.name}:</b> ${timeString || 'N/D'} (${member.totalHours})</p>`;
+                }).join('');
+
+                item.innerHTML = `
+                    <div class="summary-view">
+                        <div class="info">
+                            <span class="client">${interv.client}</span>
+                            <span class="details"><b>Data:</b> ${formattedDate}</span>
+                            <span class="details"><b>Squadra:</b> ${teamNames}</span>
+                            <span class="details"><b>Ore Totali:</b> ${formatMinutes(interv.totalMinutes)}</span>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                           <span class="expand-icon">&#9660;</span>
+                           <div class="actions">
+                                <button class="btn-secondary" data-id="${interv.id}" data-action="edit">Modifica</button>
+                                <button class="btn-danger" data-id="${interv.id}" data-action="delete">Elimina</button>
+                           </div>
+                        </div>
+                    </div>
+                    <div class="full-details">
+                        <p><b>Data Intervento:</b> ${formattedDate}</p>
+                        <p><b>Cliente:</b> ${interv.client}</p>
+                        <p><b>Indirizzo:</b> ${interv.address || 'N/D'}</p>
+                        <div><b>Orari Squadra:</b>${teamDetailsHtml}</div>
+                        <p style="margin-top: 10px;"><b>Lavoro Svolto:</b><br>${interv.workDone || 'N/D'}</p>
+                        <p><b>Materiali Utilizzati:</b><br>${(interv.materials && interv.materials.length > 0) ? interv.materials.map(m => `- ${m.qty} ${m.unit} x ${m.desc}`).join('<br>') : 'Nessuno'}</p>
+                        <p><b>Note:</b><br>${interv.notes || 'N/D'}</p>
+                    </div>
+                `;
+                interventionsList.appendChild(item);
+            });
+        }
+        summaryTotalSpan.textContent = `Totale: ${formatMinutes(totalMinutesSummary)}`;
+        saveToLocalStorage();
+    };
+
+    interventionsList.addEventListener('click', (e) => {
+        const target = e.target;
+        const action = target.dataset.action;
+        const id = target.dataset.id;
+        if (action === 'delete') {
+            e.stopPropagation();
+            dailyInterventions = dailyInterventions.filter(i => i.id != id);
+            renderInterventions();
+            showToast('Intervento eliminato.', 'error');
+        } else if (action === 'edit') {
+            e.stopPropagation();
+            const interv = dailyInterventions.find(i => i.id == id);
+            if (interv) {
+                formTitle.textContent = 'Modifica Intervento Squadra';
+                addBtn.textContent = 'Salva Modifiche';
+                interventionIdInput.value = interv.id;
+                allInputs.date.value = interv.date; 
+                allInputs.client.value = interv.client; 
+                allInputs.address.value = interv.address;
+                allInputs.workDone.value = interv.workDone;
+                allInputs.notes.value = interv.notes;
+                
+                teamContainer.innerHTML = '';
+                interv.team.forEach(member => addMemberRow(member));
+                
+                setMaterialsData(interv.materials);
+                currentPhotos = interv.photos ? [...interv.photos] : [];
+                renderPhotoPreviews();
+                updateAllTotals();
+                window.scrollTo(0, 0);
+            }
+        } else {
+            const item = target.closest('.intervention-item');
+            if (item) item.classList.toggle('expanded');
+        }
+    });
+
+    const saveToLocalStorage = () => { 
+        try {
+            localStorage.setItem('squadra_dailyInterventions', JSON.stringify(dailyInterventions)); 
+        } catch (error) {
+            console.error("Errore durante il salvataggio nel localStorage:", error);
+            showToast('Impossibile salvare i dati, memoria piena?', 'error');
+        }
+    };
+    const loadFromLocalStorage = () => {
+        const data = localStorage.getItem('squadra_dailyInterventions');
+        if (data) {
+             try { 
+                dailyInterventions = JSON.parse(data); 
+                if (!Array.isArray(dailyInterventions)) { dailyInterventions = []; }
+             } catch(e) { 
+                console.error("Errore nel caricamento da localStorage:", e);
+                dailyInterventions = []; 
+             }
+        }
+    };
+   
+    // INIZIALIZZAZIONE APP
+    loadFromLocalStorage();
+    renderInterventions();
+    resetForm(); // Pulisce il form e prepara la riga per il caposquadra
+});
+</script>
+</body>
+</html>
+</body>
+</html>
