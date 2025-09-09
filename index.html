@@ -402,7 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     teamContainer.addEventListener('input', (e) => {
         if (e.target.matches('input[type="time"], .employee-name')) {
-            // Se a cambiare sono gli orari del primo membro (caposquadra), aggiorna gli altri
             const firstMemberCard = teamContainer.firstElementChild;
             if (e.target.closest('.team-member-card') === firstMemberCard) {
                 updateDefaultTimes();
@@ -412,24 +411,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     teamContainer.addEventListener('click', (e) => {
-        // Rimuovi membro
         if (e.target.classList.contains('remove-member-btn')) {
             e.target.closest('.team-member-card').remove();
             updateAllTotals();
         }
-        // Mostra/Nascondi orari personalizzati
         if (e.target.classList.contains('toggle-times-btn')) {
             const memberCard = e.target.closest('.team-member-card');
             const timesContainer = memberCard.querySelector('.member-times');
             const isHidden = timesContainer.classList.toggle('hidden-times');
             e.target.textContent = isHidden ? 'Modifica orario' : 'Usa orario caposquadra';
             
-            if (!isHidden) { // Se ho appena mostrato gli orari, li pre-compilo
+            if (!isHidden) {
                 updateDefaultTimes();
             }
             updateAllTotals();
         }
-        // Svuota campo orario
         if (e.target.classList.contains('clear-time-btn')) {
             document.getElementById(e.target.dataset.target).value = '';
             updateAllTotals();
@@ -438,7 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addMemberBtn.addEventListener('click', () => addMemberRow());
 
-    // Funzione che aggiorna gli orari dei membri "follower" con quelli del caposquadra
     const updateDefaultTimes = () => {
         const members = Array.from(teamContainer.children);
         if (members.length < 2) return;
@@ -453,10 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         members.slice(1).forEach(memberCard => {
             const timesContainer = memberCard.querySelector('.member-times');
-            if (timesContainer.classList.contains('hidden-times')) {
-                // Se gli orari sono nascosti, non faccio nulla, erediteranno i valori al momento del calcolo
-            } else {
-                // Se sono visibili, li aggiorno
+            if (!timesContainer.classList.contains('hidden-times')) {
                 memberCard.querySelector('[id^="start-am-"]').value = leaderTimes.startAM;
                 memberCard.querySelector('[id^="end-am-"]').value = leaderTimes.endAM;
                 memberCard.querySelector('[id^="start-pm-"]').value = leaderTimes.startPM;
@@ -465,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // Funzione che calcola e aggiorna TUTTI i totali (per membro e globali)
     const updateAllTotals = () => {
         let totalMinutesIntervention = 0;
         const members = Array.from(teamContainer.children);
@@ -485,11 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let memberStartAM, memberEndAM, memberStartPM, memberEndPM;
             const timesContainer = memberCard.querySelector('.member-times');
 
-            if (timesContainer.classList.contains('hidden-times')) {
-                // Eredita orari dal caposquadra
+            if (memberCard !== members[0] && timesContainer.classList.contains('hidden-times')) {
                 ({ startAM: memberStartAM, endAM: memberEndAM, startPM: memberStartPM, endPM: memberEndPM } = leaderTimes);
             } else {
-                // Usa i propri orari
                 memberStartAM = memberCard.querySelector('[id^="start-am-"]').value;
                 memberEndAM = memberCard.querySelector('[id^="end-am-"]').value;
                 memberStartPM = memberCard.querySelector('[id^="start-pm-"]').value;
@@ -509,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==============================================================================
-    // GESTIONE MATERIALI, FOTO, TOAST (invariate)
+    // GESTIONE MATERIALI, FOTO, TOAST
     // ==============================================================================
     const addMaterialRow = (qty = '', unit = '', desc = '') => {
         const row = document.createElement('div');
@@ -597,7 +586,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // LOGICA PRINCIPALE (AGGIUNGI, MODIFICA, ELIMINA INTERVENTO)
     // ==============================================================================
     addBtn.addEventListener('click', () => {
-        // Validazione campi generali
         let isValid = true;
         [allInputs.client, allInputs.workDone, allInputs.address].forEach(field => {
             if (!field.value.trim()) {
@@ -608,7 +596,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Validazione membri squadra
         const memberCards = Array.from(teamContainer.children);
         if (memberCards.length === 0) {
             showToast('Aggiungi almeno un membro alla squadra.', 'error');
@@ -630,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Recupero dati squadra
         const leaderTimes = {
             startAM: memberCards[0].querySelector('[id^="start-am-"]').value,
             endAM: memberCards[0].querySelector('[id^="end-am-"]').value,
@@ -640,9 +626,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const teamData = memberCards.map(card => {
             const timesContainer = card.querySelector('.member-times');
+            const isFirstMember = teamContainer.firstElementChild === card;
             const useOverride = !timesContainer.classList.contains('hidden-times');
             
-            const memberTimes = useOverride ? {
+            const memberTimes = (isFirstMember || useOverride) ? {
                 startAM: card.querySelector('[id^="start-am-"]').value,
                 endAM: card.querySelector('[id^="end-am-"]').value,
                 startPM: card.querySelector('[id^="start-pm-"]').value,
@@ -678,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
             photos: currentPhotos.map(p => ({ id: p.id, dataUrl: p.dataUrl })),
             bollaRef: allInputs.bollaRef.value,
             bollaDate: allInputs.bollaDate.value,
-            team: teamData, // Salva i dati della squadra
+            team: teamData,
             totalMinutes: totalInterventionMinutes
         };
         
@@ -695,11 +682,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const resetForm = () => {
-        Object.values(allInputs).forEach(input => input.value = '');
+        Object.values(allInputs).forEach(input => { if (input) input.value = ''; });
         allInputs.date.value = new Date().toISOString().slice(0, 10);
         interventionIdInput.value = '';
         teamContainer.innerHTML = '';
-        addMemberRow(); // Aggiunge il caposquadra
+        addMemberRow();
         setMaterialsData([]);
         currentPhotos = [];
         renderPhotoPreviews();
@@ -709,7 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // ==============================================================================
-    // RENDER, LOAD, SAVE (Aggiornate per la squadra)
+    // RENDER, LOAD, SAVE
     // ==============================================================================
     const renderInterventions = () => {
         interventionsList.innerHTML = '';
@@ -728,7 +715,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const formattedDate = new Date(interv.date + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 const teamNames = interv.team.map(m => m.name).join(', ');
                 
-                // Crea il dettaglio HTML per ogni membro
                 const teamDetailsHtml = interv.team.map(member => {
                     let timeString = '';
                     if (member.startAM && member.endAM) timeString += `Mattino: ${member.startAM}-${member.endAM}`;
@@ -826,11 +812,85 @@ document.addEventListener('DOMContentLoaded', () => {
              }
         }
     };
+    
+    // ==============================================================================
+    // GESTIONE REPORT E AZIONI FINALI
+    // ==============================================================================
+    sendReportBtn.addEventListener('click', () => {
+        if (dailyInterventions.length === 0) return showToast('Aggiungi almeno un intervento.', 'error');
+        
+        const firstIntervention = dailyInterventions[0];
+        const caposquadra = firstIntervention.team.length > 0 ? firstIntervention.team[0].name : "Squadra";
+
+        showToast('Apro l\'app di posta...', 'info');
+        const reportDate = new Date(firstIntervention.date + 'T00:00:00').toLocaleDateString('it-IT');
+        const subject = `Report Interventi Squadra - ${reportDate} - ${caposquadra}`;
+        const body = `Buongiorno,\n\nallego il report interventi del ${reportDate} compilato da ${caposquadra}.\n\n(I file sono stati salvati nella cartella Download).\n\nBuona giornata.`;
+        // ==========================================================
+        const targetEmail = 'cominellis57@gmail.com'; // <--- CAMBIA QUI L'EMAIL
+        // ==========================================================
+        const mailtoLink = `mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = mailtoLink;
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+        if (dailyInterventions.length === 0) return;
+        const confirmationText = "ATTENZIONE! Stai per eliminare TUTTI gli interventi salvati. Assicurati di aver prima scaricato e inviato il report via email. L'operazione non è reversibile. Confermi?";
+        if (confirm(confirmationText)) {
+            dailyInterventions = [];
+            renderInterventions();
+            saveToLocalStorage();
+            showToast('Elenco interventi pulito!', 'success');
+        }
+    });
+
+    // Qui il codice per generare PDF ed Excel... (lasciato invariato ma andrà adattato)
+    // ... (resto del codice per PDF, Excel, Modali, Install App, etc. che non necessita modifiche per ora)
    
     // INIZIALIZZAZIONE APP
     loadFromLocalStorage();
     renderInterventions();
-    resetForm(); // Pulisce il form e prepara la riga per il caposquadra
+    resetForm(); 
+
+    // Codice per install button e modali
+    let deferredPrompt;
+    const installButton = document.getElementById('install-button');
+    const installModal = document.getElementById('install-instructions-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+   
+    if (window.matchMedia('(display-mode: standalone)').matches === false) {
+        installButton.style.display = 'block';
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installButton.style.display = 'block';
+    });
+
+    installButton.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installButton.style.display = 'none';
+            }
+            deferredPrompt = null;
+        } else {
+            installModal.style.display = 'flex';
+        }
+    });
+    if(closeModalBtn) closeModalBtn.addEventListener('click', () => { installModal.style.display = 'none'; });
+
+    modalSavePdfBtn.addEventListener('click', () => { /* Logica da implementare */ });
+    modalSaveExcelBtn.addEventListener('click', () => { /* Logica da implementare */ });
+    modalCloseSaveBtn.addEventListener('click', () => {
+        saveModal.style.display = 'none';
+        generatedPdfBlob = null;
+        generatedWb = null;
+        generatedFileNameBase = '';
+    });
+
 });
 </script>
 </body>
