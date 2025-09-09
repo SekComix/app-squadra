@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dailyInterventions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         if (dailyInterventions.length === 0) {
             interventionsList.innerHTML = '<p>Nessun intervento aggiunto.</p>';
-            clearAllBtn.style.display = 'none';
+            summaryTotalSpan.textContent = 'Totale: 0h 0min';
         } else {
             clearAllBtn.style.display = 'block';
             dailyInterventions.forEach(interv => {
