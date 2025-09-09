@@ -142,10 +142,10 @@
     </div>
    <div class="card" id="form-card">
     <!-- MODIFICA: Titolo dell'App -->
-    <h2 id="form-title">Nuovo Intervento Squadra</h2> 
+    <h2 id="form-title">Nuovo Intervento Squadra</h2>
     <input type="hidden" id="intervention-id">
     
-    <!-- MODIFICA: Campi Cliente e Data spostati sopra per chiarezza -->
+    <!-- Campi Cliente e Data spostati sopra per chiarezza -->
     <div class="form-group"><label for="date">Data</label><input type="date" id="date"></div>
     <div class="form-group"><label for="client">Cliente</label><input type="text" id="client" placeholder="Nome del cliente"></div>
     <div class="form-group"><label for="address">Indirizzo</label><input type="text" id="address" placeholder="Indirizzo dell'intervento"></div>
@@ -155,6 +155,47 @@
     <div id="team-members-container">
         <!-- Qui verranno aggiunti dinamicamente i membri della squadra -->
     </div>
+    <button id="add-member-btn" class="btn-secondary" style="width: auto; padding: 10px 15px; font-size: 14px; margin-top: 10px;">+ Aggiungi Membro</button>
+    <div id="total-hours">Totale Ore: 0h 0min</div>
+    
+    <!-- Sezioni Lavoro Svolto, Materiali, etc. (rimaste invariate) -->
+    <div class="form-group"><label for="work-done" class="section-title">Lavoro Svolto</label><textarea id="work-done" rows="4"></textarea></div>
+    <div class="form-group">
+        <h4 class="section-title">Materiali Utilizzati</h4>
+        <div id="materials-container"></div>
+        <button id="add-material-btn" class="btn-secondary">+</button>
+    </div>
+    <h4 class="section-title">Riferimenti Bolla (Opzionale)</h4>
+    <div class="bolla-section">
+         <div class="form-group"><label for="bolla-ref">Rif. Bolla</label><input type="text" id="bolla-ref" placeholder="Numero o riferimento"></div>
+         <div class="form-group"><label for="bolla-date">Data Bolla</label><input type="date" id="bolla-date"></div>
+    </div>
+    <div class="form-group">
+        <h4 class="section-title">Foto Lavori (Opzionale)</h4>
+        <div class="action-buttons-container">
+            <input type="file" id="photo-input-camera" accept="image/*" capture="environment">
+            <label for="photo-input-camera" class="photo-btn-label">📷 Scatta Foto</label>
+            <input type="file" id="photo-input-gallery" accept="image/*" multiple>
+            <label for="photo-input-gallery" class="photo-btn-label">🖼️ Scegli da Galleria</label>
+        </div>
+        <div id="photo-previews"></div>
+    </div>
+    <div class="form-group"><label for="notes" class="section-title">Note</label><textarea id="notes" rows="2"></textarea></div>
+    <button id="add-intervention-btn" class="btn-primary">Aggiungi Rapporto</button>
+</div>
+<div class="card" id="summary-card">
+    <div class="summary-header">
+        <h2 id="summary-title">Riepilogo Interventi</h2>
+        <div id="summary-total">Totale: 0h 0min</div>
+        <!-- CORREZIONE: Pulsante Svuota Tutto ripristinato -->
+        <button id="clear-all-btn" class="btn-danger" style="width: auto; padding: 8px 12px; font-size: 14px;">Svuota Tutto</button>
+    </div>
+    <div id="interventions-list" style="margin-top: 15px;"></div>
+    <div class="form-group action-buttons-container" style="margin-top: 20px;">
+        <button id="save-report-btn" class="btn-info">Salva Report</button>
+        <button id="send-report-btn" class="btn-success">Invia Report Ufficio</button>
+    </div>
+</div>
     <button id="add-member-btn" class="btn-secondary" style="width: auto; padding: 10px 15px; font-size: 14px; margin-top: 10px;">+ Aggiungi Membro</button>
     <!-- FINE NUOVA SEZIONE -->
         <div class="form-group"><label for="address">Indirizzo</label><input type="text" id="address" placeholder="Indirizzo dell'intervento"></div>
@@ -229,7 +270,28 @@
         <button id="modal-close-save" class="btn-secondary" style="margin-top: 20px;">Annulla</button>
     </div>
 </div>
-<script>
+<!-- CORREZIONE: Pulsante Installa App e Modali ripristinati -->
+<div id="toast"></div>
+<button id="install-button">Installa App</button>
+<div class="modal-overlay" id="install-instructions-modal">
+    <div class="modal-content">
+        <h3>Come installare questa App</h3>
+        <p><strong>Su Android (Chrome):</strong><br>1. Tocca i tre puntini (⋮) in alto a destra.<br>2. Seleziona "Installa app".</p>
+        <p><strong>Su iPhone (Safari):</strong><br>1. Tocca l'icona di condivisione ( quadrato con freccia in su ).<br>2. Scorri e seleziona "Aggiungi a schermata Home".</p>
+        <button id="close-modal-btn" class="btn-primary">OK, ho capito</button>
+    </div>
+</div>
+<div class="modal-overlay" id="save-modal">
+    <div class="modal-content">
+        <h3>Salva Report</h3>
+        <p>Scegli quale file scaricare sul tuo dispositivo.</p>
+        <div class="action-buttons-container" style="flex-direction: column; gap: 10px;">
+            <button id="modal-save-pdf" class="btn-info">Scarica PDF</button>
+            <button id="modal-save-excel" class="btn-success">Scarica Excel</button>
+        </div>
+        <button id="modal-close-save" class="btn-secondary" style="margin-top: 20px;">Annulla</button>
+    </div>    
+    <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registrato:', reg.scope)).catch(err => console.log('SW non registrato:', err));
