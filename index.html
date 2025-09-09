@@ -439,69 +439,87 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     addBtn.addEventListener('click', () => {
-        let isValid = true;
-        [allInputs.client, allInputs.workDone, allInputs.address].forEach(field => {
-            if (!field.value.trim()) { field.classList.add('error'); isValid = false; } else { field.classList.remove('error'); }
-        });
-        const memberCards = Array.from(teamContainer.children);
-        if (memberCards.length === 0) { showToast('Aggiungi almeno un membro alla squadra.', 'error'); return; }
-        memberCards.forEach(card => {
-            const nameInput = card.querySelector('.employee-name');
-            if (!nameInput.value.trim()) { nameInput.classList.add('error'); isValid = false; } else { nameInput.classList.remove('error'); }
-        });
-        if (!isValid) { showToast('Compila tutti i campi evidenziati.', 'error'); return; }
-        const leaderTimes = {
-            startAM: memberCards[0].querySelector('[id^="start-am-"]').value,
-            endAM: memberCards[0].querySelector('[id^="end-am-"]').value,
-            startPM: memberCards[0].querySelector('[id^="start-pm-"]').value,
-            endPM: memberCards[0].querySelector('[id^="end-pm-"]').value,
-        };
-        const teamData = memberCards.map(card => {
-            const timesContainer = card.querySelector('.member-times');
-            const isFirstMember = teamContainer.firstElementChild === card;
-            const useOverride = !timesContainer.classList.contains('hidden-times');
-            const memberTimes = (isFirstMember || useOverride) ? {
-                startAM: card.querySelector('[id^="start-am-"]').value,
-                endAM: card.querySelector('[id^="end-am-"]').value,
-                startPM: card.querySelector('[id^="start-pm-"]').value,
-                endPM: card.querySelector('[id^="end-pm-"]').value,
-            } : leaderTimes;
-            const totalMinutes = calculateMinutes(memberTimes.startAM, memberTimes.endAM) + calculateMinutes(memberTimes.startPM, memberTimes.endPM);
-            return {
-                id: card.dataset.id,
-                name: card.querySelector('.employee-name').value,
-                ...memberTimes,
-                timesOverridden: useOverride,
-                totalMinutes: totalMinutes,
-                totalHours: formatMinutes(totalMinutes)
-            };
-        });
-        const totalInterventionMinutes = teamData.reduce((sum, member) => sum + member.totalMinutes, 0);
-        if (totalInterventionMinutes <= 0) { showToast('Inserire almeno un intervallo di ore valido.', 'error'); return; }
-        const intervention = {
-            id: interventionIdInput.value ? Number(interventionIdInput.value) : Date.now(),
-            date: allInputs.date.value,
-            client: allInputs.client.value,
-            address: allInputs.address.value,
-            workDone: allInputs.workDone.value,
-            materials: getMaterialsData(),
-            notes: allInputs.notes.value,
-            photos: currentPhotos.map(p => ({ id: p.id, dataUrl: p.dataUrl })),
-            bollaRef: allInputs.bollaRef.value,
-            bollaDate: allInputs.bollaDate.value,
-            team: teamData,
-            totalMinutes: totalInterventionMinutes
-        };
-        const existingIndex = dailyInterventions.findIndex(i => i.id == intervention.id);
-        if (existingIndex > -1) {
-            dailyInterventions[existingIndex] = intervention;
-            showToast('Intervento modificato!');
-        } else {
-            dailyInterventions.push(intervention);
-            showToast('Intervento aggiunto!');
+    let isValid = true;
+    [allInputs.client, allInputs.workDone, allInputs.address].forEach(field => {
+        if (!field.value.trim()) { field.classList.add('error'); isValid = false; } else { field.classList.remove('error'); }
+    });
+
+    const memberCards = Array.from(teamContainer.children);
+    if (memberCards.length === 0) { showToast('Aggiungi almeno un membro alla squadra.', 'error'); return; }
+    
+    memberCards.forEach(card => {
+        const nameInput = card.querySelector('.employee-name');
+        if (!nameInput.value.trim()) { nameInput.classList.add('error'); isValid = false; } else { nameInput.classList.remove('error'); }
+    });
+
+    if (!isValid) { showToast('Compila tutti i campi evidenziati.', 'error'); return; }
+
+    // --- NUOVO CONTROLLO SOVRAPPOSIZIONE ORARI ---
+    const teamDataForCheck = getTeamDataFromForm(); // Prende i dati del team dal form attuale
+    if (!teamDataForCheck) return; // Se ci sono errori negli orari, esce
+
+    const existingInterventionsOnDate = dailyInterventions.filter(
+        i => i.date === allInputs.date.value && i.id.toString() !== interventionIdInput.value
+    );
+
+    for (const newMember of teamDataForCheck) {
+        const newMemberName = newMember.name.trim().toLowerCase();
+        if (newMemberName === "") continue;
+
+        const newIntervals = [];
+        if (newMember.startAM && newMember.endAM) newIntervals.push({ start: newMember.startAM, end: newMember.endAM });
+        if (newMember.startPM && newMember.endPM) newIntervals.push({ start: newMember.startPM, end: newMember.endPM });
+
+        for (const existingInter of existingInterventionsOnDate) {
+            for (const existingMember of existingInter.team) {
+                if (existingMember.name.trim().toLowerCase() === newMemberName) {
+                    const existingIntervals = [];
+                    if (existingMember.startAM && existingMember.endAM) existingIntervals.push({ start: existingMember.startAM, end: existingMember.endAM });
+                    if (existingMember.startPM && existingMember.endPM) existingIntervals.push({ start: existingMember.startPM, end: existingMember.endPM });
+
+                    for (const newInt of newIntervals) {
+                        for (const oldInt of existingIntervals) {
+                            if (newInt.start < oldInt.end && newInt.end > oldInt.start) {
+                                showToast(`${newMember.name} ha una sovrapposizione con un altro intervento per il cliente ${existingInter.client}.`, 'error', 6000);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         }
-        renderInterventions();
-        resetForm();
+    }
+    // --- FINE NUOVO CONTROLLO ---
+
+    const totalInterventionMinutes = teamDataForCheck.reduce((sum, member) => sum + member.totalMinutes, 0);
+    if (totalInterventionMinutes <= 0) { showToast('Inserire almeno un intervallo di ore valido.', 'error'); return; }
+    
+    const intervention = {
+        id: interventionIdInput.value ? Number(interventionIdInput.value) : Date.now(),
+        date: allInputs.date.value,
+        client: allInputs.client.value,
+        address: allInputs.address.value,
+        workDone: allInputs.workDone.value,
+        materials: getMaterialsData(),
+        notes: allInputs.notes.value,
+        photos: currentPhotos.map(p => ({ id: p.id, dataUrl: p.dataUrl })),
+        bollaRef: allInputs.bollaRef.value,
+        bollaDate: allInputs.bollaDate.value,
+        team: teamDataForCheck,
+        totalMinutes: totalInterventionMinutes
+    };
+    
+    const existingIndex = dailyInterventions.findIndex(i => i.id == intervention.id);
+    if (existingIndex > -1) {
+        dailyInterventions[existingIndex] = intervention;
+        showToast('Intervento modificato!');
+    } else {
+        dailyInterventions.push(intervention);
+        showToast('Intervento aggiunto!');
+    }
+    
+    renderInterventions();
+    resetForm();
     });
 
     const resetForm = () => {
@@ -654,10 +672,113 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     const generateFiles = async () => {
-        console.log("Generazione file non ancora implementata per la versione squadra.");
-        showToast("Funzione report non ancora disponibile.", "info");
+    if (dailyInterventions.length === 0 || dailyInterventions[0].team.length === 0) {
+        showToast("Nessun dato valido per generare il report.", "error");
         return { pdfBlob: null, wb: null, fileNameBase: '' };
+    }
+    const caposquadra = dailyInterventions[0].team[0].name.trim();
+    const now = new Date();
+    const timeString = `${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}`;
+    const fileNameBase = `Report_Squadra_${now.toISOString().slice(0,10)}_${caposquadra.replace(/ /g, '_')}_${timeString}`;
+   
+    // --- GENERAZIONE PDF ---
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    let yPos = 40;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 40;
+
+    const addHeader = (date) => {
+        const formattedDateForHeader = new Date(date + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        doc.setFontSize(22); doc.setFont(undefined, 'bold');
+        doc.text(`Rapporto di Intervento Squadra`, doc.internal.pageSize.width / 2, yPos, { align: 'center' }); yPos += 30;
+        doc.setFontSize(12); doc.setFont(undefined, 'normal');
+        doc.text(`Data: ${formattedDateForHeader}`, margin, yPos);
+        doc.text(`Caposquadra: ${caposquadra}`, doc.internal.pageSize.width - margin, yPos, { align: 'right' }); yPos += 25;
+        doc.setLineWidth(1.5); doc.line(margin, yPos, doc.internal.pageSize.width - margin, yPos); yPos += 20;
     };
+
+    const checkPageBreak = (spaceNeeded) => {
+        if (yPos + spaceNeeded > pageHeight - margin) {
+            doc.addPage();
+            yPos = margin;
+            addHeader(new Date().toISOString().slice(0, 10)); // Usa data corrente per le nuove pagine
+        }
+    };
+    
+    addHeader(dailyInterventions[0].date);
+
+    for (const [index, interv] of dailyInterventions.entries()) {
+        checkPageBreak(150);
+        doc.setFontSize(14); doc.setFont(undefined, 'bold');
+        doc.text(`Intervento #${index + 1} - Cliente: ${interv.client}`, margin, yPos); yPos += 15;
+        doc.setFont(undefined, 'normal'); doc.setFontSize(10);
+        doc.text(`Indirizzo: ${interv.address || 'N/D'}`, margin, yPos); yPos += 20;
+
+        doc.setFont(undefined, 'bold'); doc.text('Squadra e Orari:', margin, yPos); yPos += 12;
+        doc.setFont(undefined, 'normal');
+        for(const member of interv.team) {
+            checkPageBreak(12);
+            let timeString = (member.startAM && member.endAM ? `${member.startAM}-${member.endAM}` : '') + 
+                           ((member.startAM && member.endAM && member.startPM && member.endPM) ? ' | ' : '') + 
+                           (member.startPM && member.endPM ? `${member.startPM}-${member.endPM}` : '');
+            doc.text(`- ${member.name}: ${timeString} (${member.totalHours})`, margin + 10, yPos);
+            yPos += 12;
+        }
+        yPos += 8;
+
+        const addSection = (title, content) => {
+            if (content && content.trim() !== '') {
+                checkPageBreak(24);
+                doc.setFont(undefined, 'bold'); doc.text(title, margin, yPos); yPos += 12;
+                doc.setFont(undefined, 'normal');
+                const lines = doc.splitTextToSize(content, doc.internal.pageSize.width - margin * 2);
+                checkPageBreak(lines.length * 12 + 10);
+                doc.text(lines, margin, yPos); yPos += (lines.length * 12) + 10;
+            }
+        };
+
+        addSection('Lavoro Svolto:', interv.workDone);
+        const materialsText = (interv.materials && interv.materials.length > 0) ? interv.materials.map(m => `- ${m.qty} ${m.unit} x ${m.desc}`).join('\n') : '';
+        addSection('Materiali Utilizzati:', materialsText);
+        addSection('Note Aggiuntive:', interv.notes);
+        
+        if (index < dailyInterventions.length - 1) { yPos += 10; checkPageBreak(10); doc.setLineDashPattern([5, 5], 0); doc.line(margin, yPos, doc.internal.pageSize.width - margin, yPos); doc.setLineDashPattern([], 0); yPos += 20;}
+    }
+    const pdfBlob = doc.output('blob');
+
+    // --- GENERAZIONE EXCEL ---
+    const excelData = [];
+    dailyInterventions.forEach(interv => {
+        const [y, m, d] = interv.date.split('-');
+        const formattedDate = `${d}-${m}-${y}`;
+        
+        // Per ogni membro del team, crea una riga in Excel
+        interv.team.forEach(member => {
+            const rowData = {
+                'Data': formattedDate,
+                'Cliente': interv.client,
+                'Indirizzo': interv.address,
+                'Dipendente': member.name,
+                'Ora Inizio Mattino': member.startAM || '',
+                'Ora Fine Mattino': member.endAM || '',
+                'Ora Inizio Pomeriggio': member.startPM || '',
+                'Ora Fine Pomeriggio': member.endPM || '',
+                'Ore Lavorate': member.totalHours,
+                'Lavoro Svolto': interv.workDone, // Il lavoro è comune
+                'Note': interv.notes // Le note sono comuni
+            };
+            excelData.push(rowData);
+        });
+    });
+
+    const headers = ['Data', 'Cliente', 'Indirizzo', 'Dipendente', 'Ora Inizio Mattino', 'Ora Fine Mattino', 'Ora Inizio Pomeriggio', 'Ora Fine Pomeriggio', 'Ore Lavorate', 'Lavoro Svolto', 'Note'];
+    const ws = XLSX.utils.json_to_sheet(excelData, {header: headers});
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Interventi Squadra");
+    
+    return { pdfBlob, wb, fileNameBase };
+};
     
     saveReportBtn.addEventListener('click', async () => {
         if (dailyInterventions.length === 0) return showToast('Nessun intervento da salvare.', 'error');
