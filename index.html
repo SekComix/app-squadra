@@ -175,7 +175,6 @@
         <button id="modal-close-save" class="btn-secondary" style="margin-top: 20px;">Annulla</button>
     </div>
 </div>
-
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -183,7 +182,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 document.addEventListener('DOMContentLoaded', () => {
-    // Riferimenti agli elementi HTML
     const allInputs = {
         date: document.getElementById('date'),
         client: document.getElementById('client'),
@@ -211,12 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalHoursSpan = document.getElementById('total-hours');
     const summaryTotalSpan = document.getElementById('summary-total');
 
-    // Variabili di stato
     let dailyInterventions = [];
     let currentPhotos = [];
     const unitsOfMeasure = ["", "PZ", "NR", "MT", "MQ", "KG", "LT", "SC", "CONF", "ORE", "Altro..."];
    
-    // Variabili per i modali e i file
     const saveModal = document.getElementById('save-modal');
     const modalSavePdfBtn = document.getElementById('modal-save-pdf');
     const modalSaveExcelBtn = document.getElementById('modal-save-excel');
@@ -238,11 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const addMemberRow = (member = {}) => {
         const memberId = member.id || `member-${Date.now()}`;
         const isFirstMember = teamContainer.children.length === 0;
-
         const memberCard = document.createElement('div');
         memberCard.className = 'team-member-card';
         memberCard.dataset.id = memberId;
-
         memberCard.innerHTML = `
             <div class="team-member-header">
                 <div class="form-group">
@@ -523,8 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addBtn.textContent = 'Aggiungi Rapporto';
         updateAllTotals();
     };
-    
-    const renderInterventions = () => {
+        const renderInterventions = () => {
         interventionsList.innerHTML = '';
         let totalMinutesSummary = 0;
         dailyInterventions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -660,19 +653,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Funzioni per generare report (da implementare)
     const generateFiles = async () => {
-        // Qui andrà la logica per creare PDF ed Excel basati sulla nuova struttura dati 'team'
         console.log("Generazione file non ancora implementata per la versione squadra.");
         showToast("Funzione report non ancora disponibile.", "info");
-        return { pdfBlob: null, wb: null, fileNameBase: '' }; // Ritorna valori nulli per ora
+        return { pdfBlob: null, wb: null, fileNameBase: '' };
     };
     
     saveReportBtn.addEventListener('click', async () => {
         if (dailyInterventions.length === 0) return showToast('Nessun intervento da salvare.', 'error');
         showToast('Preparazione file in corso...', 'info');
         const { wb, fileNameBase, pdfBlob } = await generateFiles();
-        if(!pdfBlob || !wb) return; // Interrompe se i file non sono stati generati
+        if(!pdfBlob || !wb) return;
         generatedPdfBlob = pdfBlob;
         generatedWb = wb;
         generatedFileNameBase = fileNameBase;
@@ -697,3 +688,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!generatedWb) return showToast('Errore: Excel non generato.', 'error');
         XLSX.writeFile(generatedWb, `${generatedFileNameBase}.xlsx`);
         showToast('Excel salvato nei Download!', 'success');
+    });
+
+    modalCloseSaveBtn.addEventListener('click', () => {
+        saveModal.style.display = 'none';
+        generatedPdfBlob = null;
+        generatedWb = null;
+        generatedFileNameBase = '';
+    });
+
+    let deferredPrompt;
+    const installButton = document.getElementById('install-button');
+    const installModal = document.getElementById('install-instructions-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+   
+    if (window.matchMedia('(display-mode: standalone)').matches === false) {
+        installButton.style.display = 'block';
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installButton.style.display = 'block';
+    });
+
+    installButton.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installButton.style.display = 'none';
+            }
+            deferredPrompt = null;
+        } else {
+            installModal.style.display = 'flex';
+        }
+    });
+    if(closeModalBtn) closeModalBtn.addEventListener('click', () => { installModal.style.display = 'none'; });
+    
+    loadFromLocalStorage();
+    renderInterventions();
+    resetForm();
+});
+</script>
+</body>
+</html>
