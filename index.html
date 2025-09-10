@@ -176,7 +176,6 @@
         <button id="modal-close-save" class="btn-secondary" style="margin-top: 20px;">Annulla</button>
     </div>
 </div>
-
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -190,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notes: document.getElementById('notes'), bollaRef: document.getElementById('bolla-ref'),
         bollaDate: document.getElementById('bolla-date')
     };
+    const formCard = document.getElementById('form-card');
     const teamContainer = document.getElementById('team-members-container');
     const addMemberBtn = document.getElementById('add-member-btn');
     const materialsContainer = document.getElementById('materials-container');
@@ -545,8 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAllTotals();
         toggleReportButtons(true);
     };
-    
-    const renderInterventions = () => {
+        const renderInterventions = () => {
         interventionsList.innerHTML = '';
         let totalMinutesSummary = 0;
         dailyInterventions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -622,6 +621,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 allInputs.address.value = interv.address;
                 allInputs.workDone.value = interv.workDone;
                 allInputs.notes.value = interv.notes;
+                allInputs.bollaRef.value = interv.bollaRef;
+                allInputs.bollaDate.value = interv.bollaDate;
                 teamContainer.innerHTML = '';
                 interv.team.forEach(member => addMemberRow(member));
                 setMaterialsData(interv.materials);
@@ -669,6 +670,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const caposquadra = dailyInterventions[0].team[0].name.trim();
         const now = new Date();
+        const generationDate = now.toLocaleDateString('it-IT');
+        const generationTime = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit'});
         const timeString = `${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}`;
         const fileNameBase = `Report_Squadra_${now.toISOString().slice(0,10)}_${caposquadra.replace(/ /g, '_')}_${timeString}`;
        
@@ -677,29 +680,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let yPos = 40;
         const pageHeight = doc.internal.pageSize.height;
         const margin = 40;
-
-        const addHeader = (date) => {
-            const formattedDateForHeader = new Date(date + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            doc.setFontSize(22); doc.setFont(undefined, 'bold');
-            doc.text(`Rapporto di Intervento Squadra`, doc.internal.pageSize.width / 2, yPos, { align: 'center' }); yPos += 30;
-            doc.setFontSize(12); doc.setFont(undefined, 'normal');
-            doc.text(`Data Report: ${formattedDateForHeader}`, margin, yPos);
-            doc.text(`Caposquadra: ${caposquadra}`, doc.internal.pageSize.width - margin, yPos, { align: 'right' }); yPos += 25;
-            doc.setLineWidth(1.5); doc.line(margin, yPos, doc.internal.pageSize.width - margin, yPos); yPos += 20;
-        };
         const checkPageBreak = (spaceNeeded) => {
             if (yPos + spaceNeeded > pageHeight - margin) {
                 doc.addPage(); yPos = margin;
-                addHeader(new Date().toISOString().slice(0, 10));
             }
         };
-        addHeader(dailyInterventions[0].date);
         for (const [index, interv] of dailyInterventions.entries()) {
             checkPageBreak(150);
             const formattedDate = new Date(interv.date + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            doc.setFontSize(14); doc.setFont(undefined, 'bold');
-            doc.text(`Intervento #${index + 1} - Cliente: ${interv.client}`, margin, yPos); yPos += 15;
-            doc.setFont(undefined, 'normal'); doc.setFontSize(10);
+            doc.setFontSize(10); doc.setFont(undefined, 'bold');
+            doc.text(`Intervento #${index + 1} - Cliente: ${interv.client}`, margin, yPos);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Report generato il: ${generationDate} ${generationTime}`, doc.internal.pageSize.width - margin, yPos, { align: 'right' });
+            yPos += 15;
+            doc.setLineWidth(1); doc.line(margin, yPos, doc.internal.pageSize.width - margin, yPos); yPos += 15;
+            doc.setFontSize(10);
             doc.text(`Data Intervento: ${formattedDate}`, margin, yPos); yPos += 12;
             doc.text(`Indirizzo: ${interv.address || 'N/D'}`, margin, yPos); yPos += 20;
             doc.setFont(undefined, 'bold'); doc.text('Squadra e Orari:', margin, yPos); yPos += 12;
@@ -749,15 +744,12 @@ document.addEventListener('DOMContentLoaded', () => {
             lastClientDate = clientDate;
             const [y, m, d] = interv.date.split('-');
             const formattedDate = `${d}-${m}-${y}`;
-            const timeSlotsByMember = {};
+            const teamSlots = [];
             interv.team.forEach(member => {
-                timeSlotsByMember[member.name] = [];
-                if (member.startAM && member.endAM) timeSlotsByMember[member.name].push({ start: member.startAM, end: member.endAM, duration: formatMinutes(calculateMinutes(member.startAM, member.endAM)) });
-                if (member.startPM && member.endPM) timeSlotsByMember[member.name].push({ start: member.startPM, end: member.endPM, duration: formatMinutes(calculateMinutes(member.startPM, member.endPM)) });
+                if (member.startAM && member.endAM) teamSlots.push({ name: member.name, start: member.startAM, end: member.endAM, duration: formatMinutes(calculateMinutes(member.startAM, member.endAM)) });
+                if (member.startPM && member.endPM) teamSlots.push({ name: member.name, start: member.startPM, end: member.endPM, duration: formatMinutes(calculateMinutes(member.startPM, member.endPM)) });
             });
-            const memberNames = Object.keys(timeSlotsByMember);
-            const maxRows = Math.max(1, interv.materials.length, ...memberNames.map(name => timeSlotsByMember[name].length));
-
+            const maxRows = Math.max(1, teamSlots.length, interv.materials.length);
             for (let i = 0; i < maxRows; i++) {
                 const rowData = {};
                 if (i === 0) {
@@ -765,16 +757,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     rowData['Cliente'] = interv.client;
                     rowData['Indirizzo'] = interv.address;
                     rowData['Lavoro Svolto'] = interv.workDone;
-                    rowData['Note'] = interv.notes;
                 }
-                if (i < memberNames.length) {
-                    const memberName = memberNames[i];
-                    if (timeSlotsByMember[memberName].length > 0) {
-                        rowData['Dipendente'] = memberName;
-                        rowData['Ora Inizio'] = timeSlotsByMember[memberName][0].start;
-                        rowData['Ora Fine'] = timeSlotsByMember[memberName][0].end;
-                        rowData['Durata'] = timeSlotsByMember[memberName][0].duration;
-                    }
+                if (teamSlots[i]) {
+                    rowData['Dipendente'] = teamSlots[i].name;
+                    rowData['Ora Inizio'] = teamSlots[i].start;
+                    rowData['Ora Fine'] = teamSlots[i].end;
+                    rowData['Durata'] = teamSlots[i].duration;
                 }
                 if (interv.materials[i]) {
                     rowData['Materiale'] = interv.materials[i].desc;
@@ -784,17 +772,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (i === maxRows - 1) {
                     rowData['Rif. Bolla'] = interv.bollaRef;
                     rowData['Data Bolla'] = interv.bollaDate;
+                    rowData['Note'] = interv.notes;
                 }
                 excelData.push(rowData);
-                if (i < memberNames.length && timeSlotsByMember[memberNames[i]].length > 1) {
-                    for (let j = 1; j < timeSlotsByMember[memberNames[i]].length; j++) {
-                        const extraTimeRow = {};
-                        extraTimeRow['Ora Inizio'] = timeSlotsByMember[memberNames[i]][j].start;
-                        extraTimeRow['Ora Fine'] = timeSlotsByMember[memberNames[i]][j].end;
-                        extraTimeRow['Durata'] = timeSlotsByMember[memberNames[i]][j].duration;
-                        excelData.push(extraTimeRow);
-                    }
-                }
             }
         });
         const headers = ['Data', 'Cliente', 'Indirizzo', 'Dipendente', 'Ora Inizio', 'Ora Fine', 'Durata', 'Lavoro Svolto', 'Materiale', 'Q.tà', 'UM', 'Rif. Bolla', 'Data Bolla', 'Note'];
@@ -818,15 +798,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sendReportBtn.addEventListener('click', () => {
         if (dailyInterventions.length === 0) return showToast('Aggiungi almeno un intervento.', 'error');
-        const firstIntervention = dailyInterventions[0];
-        const caposquadra = firstIntervention.team.length > 0 ? firstIntervention.team[0].name : "Squadra";
-        showToast('Apro l\'app di posta...', 'info');
-        const reportDate = new Date(firstIntervention.date + 'T00:00:00').toLocaleDateString('it-IT');
-        const subject = `Report Interventi Squadra - ${reportDate} - ${caposquadra}`;
-        const body = `Buongiorno,\n\nallego il report interventi del ${reportDate} compilato da ${caposquadra}.\n\n(I file sono stati salvati nella cartella Download).\n\nBuona giornata.`;
-        const targetEmail = 'cominellis57@gmail.com'; // <--- CAMBIA QUI L'EMAIL
-        const mailtoLink = `mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        window.location.href = mailtoLink;
+        const confirmationMessage = "Stai per aprire il programma di posta.\n\nRicordati di allegare manualmente i file PDF ed Excel che hai salvato nella cartella Download.\n\nProcedere?";
+        if (confirm(confirmationMessage)) {
+            const firstIntervention = dailyInterventions[0];
+            const caposquadra = firstIntervention.team.length > 0 ? firstIntervention.team[0].name : "Squadra";
+            showToast('Apro l\'app di posta...', 'info');
+            const reportDate = new Date(firstIntervention.date + 'T00:00:00').toLocaleDateString('it-IT');
+            const subject = `Report Interventi Squadra - ${reportDate} - ${caposquadra}`;
+            const body = `Buongiorno,\n\nallego il report interventi del ${reportDate} compilato da ${caposquadra}.\n\nBuona giornata.`;
+            const targetEmail = 'cominellis57@gmail.com'; // <--- CAMBIA QUI L'EMAIL
+            const mailtoLink = `mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+        }
     });
 
     clearAllBtn.addEventListener('click', () => {
@@ -835,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm(confirmationText)) {
             dailyInterventions = [];
             renderInterventions();
-            saveToLocalStorage();
+            localStorage.removeItem('squadra_dailyInterventions');
             showToast('Elenco interventi pulito!', 'success');
         }
     });
@@ -886,10 +869,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if(closeModalBtn) closeModalBtn.addEventListener('click', () => { installModal.style.display = 'none'; });
     
-    // CORREZIONE: Aggiungo i listener per disabilitare i pulsanti
-    const formCard = document.getElementById('form-card');
     formCard.addEventListener('input', () => {
-        if (interventionIdInput.value === '') { // Disabilita solo se è un nuovo intervento, non in modifica
+        if (addBtn.textContent !== 'Salva Modifiche') {
             toggleReportButtons(false);
         }
     });
