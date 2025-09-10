@@ -482,6 +482,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const teamDataForCheck = getTeamDataFromForm();
         if (!teamDataForCheck) return;
+
+        for (const member of teamDataForCheck) {
+            const startPMInput = document.getElementById(`start-pm-${member.id.replace('member-','')}`);
+            if (member.startPM && member.startPM < "12:00") {
+                showToast(`L'orario del pomeriggio per ${member.name} non può iniziare prima delle 12:00.`, 'error', 5000);
+                if (startPMInput) startPMInput.classList.add('error');
+                return;
+            }
+            if (startPMInput) startPMInput.classList.remove('error');
+        }
+
         const existingInterventionsOnDate = dailyInterventions.filter(i => i.date === allInputs.date.value && i.id.toString() !== interventionIdInput.value);
         for (const newMember of teamDataForCheck) {
             const newMemberName = newMember.name.trim().toLowerCase();
@@ -749,7 +760,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (member.startAM && member.endAM) teamSlots.push({ name: member.name, start: member.startAM, end: member.endAM, duration: formatMinutes(calculateMinutes(member.startAM, member.endAM)) });
                 if (member.startPM && member.endPM) teamSlots.push({ name: member.name, start: member.startPM, end: member.endPM, duration: formatMinutes(calculateMinutes(member.startPM, member.endPM)) });
             });
-            const maxRows = Math.max(1, teamSlots.length, interv.materials.length);
+            const teamRowsNeeded = teamSlots.length;
+            const materialRowsNeeded = interv.materials.length;
+            const maxRows = Math.max(1, teamRowsNeeded, materialRowsNeeded);
             for (let i = 0; i < maxRows; i++) {
                 const rowData = {};
                 if (i === 0) {
@@ -758,13 +771,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     rowData['Indirizzo'] = interv.address;
                     rowData['Lavoro Svolto'] = interv.workDone;
                 }
-                if (teamSlots[i]) {
+                if (i < teamRowsNeeded) {
                     rowData['Dipendente'] = teamSlots[i].name;
                     rowData['Ora Inizio'] = teamSlots[i].start;
                     rowData['Ora Fine'] = teamSlots[i].end;
                     rowData['Durata'] = teamSlots[i].duration;
                 }
-                if (interv.materials[i]) {
+                if (i < materialRowsNeeded) {
                     rowData['Materiale'] = interv.materials[i].desc;
                     rowData['Q.tà'] = interv.materials[i].qty;
                     rowData['UM'] = interv.materials[i].unit;
