@@ -1,11 +1,11 @@
 {
-  "name": "Report Interventi",
-  "short_name": "Report Ore",
+  "name": "Report Interventi Squadra",
+  "short_name": "OreTeam",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#f8f9fa",
-  "theme_color": "#007bff",
-  "description": "App per la gestione dei report di intervento giornalieri.",
+  "background_color": "#ffffff",
+  "theme_color": "#28a745",
+  "description": "App per la compilazione di report di intervento per squadre.",
   "icons": [
     {
       "src": "icon.svg",
